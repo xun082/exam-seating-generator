@@ -12,6 +12,12 @@ interface SeatAssignment {
   grade: string;
 }
 
+interface SeatingArrangement {
+  roomNumber: number;
+  students: SeatAssignment[];
+  grade?: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { seatingArrangements, title = "考试座位表" } = await request.json();
@@ -25,8 +31,8 @@ export async function POST(request: NextRequest) {
 
     // 为每个试室创建工作表
     seatingArrangements.forEach(
-      (room: { roomNumber: number; students: SeatAssignment[] }) => {
-        const { roomNumber, students } = room;
+      (room: SeatingArrangement) => {
+        const { roomNumber, students, grade } = room;
 
         // 创建6×6布局的数据
         const data: (string | number)[][] = [];
@@ -39,9 +45,10 @@ export async function POST(request: NextRequest) {
         }
         data.push(titleRow);
 
-        // 添加试室号
+        // 添加年级和试室号
         const roomRow: (string | number)[] = [];
-        roomRow.push(`试室号: ${String(roomNumber).padStart(2, "0")}`);
+        const gradeInfo = grade ? `${grade} - ` : '';
+        roomRow.push(`${gradeInfo}试室号: ${String(roomNumber).padStart(2, "0")}`);
         for (let i = 1; i < 24; i++) {
           roomRow.push("");
         }
@@ -133,11 +140,13 @@ export async function POST(request: NextRequest) {
         }
         worksheet["!rows"] = rowHeights;
 
-        // 添加工作表到工作簿
+        // 添加工作表到工作簿（包含年级信息以避免重名）
+        const gradePrefix = grade ? `${grade}-` : '';
+        const sheetName = `${gradePrefix}试室${String(roomNumber).padStart(2, "0")}`;
         XLSX.utils.book_append_sheet(
           workbook,
           worksheet,
-          `试室${String(roomNumber).padStart(2, "0")}`
+          sheetName
         );
       }
     );

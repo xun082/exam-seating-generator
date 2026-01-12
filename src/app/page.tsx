@@ -26,6 +26,7 @@ interface SeatAssignment {
 interface SeatingArrangement {
   roomNumber: number;
   students: SeatAssignment[];
+  grade?: string;
 }
 
 export default function Home() {
@@ -33,15 +34,23 @@ export default function Home() {
   const [seatingArrangements, setSeatingArrangements] = useState<SeatingArrangement[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  const [prefix, setPrefix] = useState('07011');
-  const [examTitle, setExamTitle] = useState('2025年秋季七年级期末质量监测');
+  const [examTitle, setExamTitle] = useState('2025年秋季期末质量监测');
+  const [studentsPerRoom, setStudentsPerRoom] = useState(36);
+  const [distributionStrategy, setDistributionStrategy] = useState<'last' | 'separate' | 'average'>('last');
+  const [gradePrefixes, setGradePrefixes] = useState<Record<string, string>>({
+    '七年级': '07011',
+    '八年级': '08011',
+    '九年级': '09011',
+  });
 
   // 从localStorage加载数据
   useEffect(() => {
     const savedStudents = localStorage.getItem('students');
     const savedSeating = localStorage.getItem('seatingArrangements');
-    const savedPrefix = localStorage.getItem('prefix');
     const savedTitle = localStorage.getItem('examTitle');
+    const savedStudentsPerRoom = localStorage.getItem('studentsPerRoom');
+    const savedStrategy = localStorage.getItem('distributionStrategy');
+    const savedGradePrefixes = localStorage.getItem('gradePrefixes');
     
     if (savedStudents) {
       setStudents(JSON.parse(savedStudents));
@@ -49,11 +58,17 @@ export default function Home() {
     if (savedSeating) {
       setSeatingArrangements(JSON.parse(savedSeating));
     }
-    if (savedPrefix) {
-      setPrefix(savedPrefix);
-    }
     if (savedTitle) {
       setExamTitle(savedTitle);
+    }
+    if (savedStudentsPerRoom) {
+      setStudentsPerRoom(parseInt(savedStudentsPerRoom, 10));
+    }
+    if (savedStrategy && (savedStrategy === 'last' || savedStrategy === 'separate' || savedStrategy === 'average')) {
+      setDistributionStrategy(savedStrategy);
+    }
+    if (savedGradePrefixes) {
+      setGradePrefixes(JSON.parse(savedGradePrefixes));
     }
   }, []);
 
@@ -207,7 +222,9 @@ export default function Home() {
         },
         body: JSON.stringify({
           students,
-          prefix,
+          gradePrefixes,
+          studentsPerRoom,
+          distributionStrategy,
         }),
       });
 
@@ -239,8 +256,10 @@ export default function Home() {
         
         setSeatingArrangements(result.seatingArrangements);
         localStorage.setItem('seatingArrangements', JSON.stringify(result.seatingArrangements));
-        localStorage.setItem('prefix', prefix);
         localStorage.setItem('examTitle', examTitle);
+        localStorage.setItem('studentsPerRoom', studentsPerRoom.toString());
+        localStorage.setItem('distributionStrategy', distributionStrategy);
+        localStorage.setItem('gradePrefixes', JSON.stringify(gradePrefixes));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '生成座位表失败');
@@ -314,49 +333,78 @@ export default function Home() {
     reset();
   };
 
-  // 渲染座位表（6×6布局，6组）
+  // 渲染座位表（动态布局，6列）
   const renderSeatingTable = (arrangement: SeatingArrangement) => {
-    const { roomNumber, students } = arrangement;
+    const { roomNumber, students, grade } = arrangement;
+    
+    // 计算实际列数（最多6列）
+    const maxCol = Math.max(...students.map(s => s.col), 6);
+    const actualCols = Math.min(maxCol, 6);
     
     // 按列（组）组织数据
-    const groups: SeatAssignment[][] = [[], [], [], [], [], []];
+    const groups: SeatAssignment[][] = Array(actualCols).fill(null).map(() => []);
     students.forEach(seat => {
-      groups[seat.col - 1].push(seat);
+      const colIndex = seat.col - 1;
+      if (colIndex >= 0 && colIndex < actualCols) {
+        groups[colIndex].push(seat);
+      }
     });
 
     // 按行排序
     groups.forEach(group => {
       group.sort((a, b) => a.row - b.row);
     });
+    
+    // 计算最大行数
+    const maxRows = Math.max(...groups.map(g => g.length), 0);
 
     return (
       <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-200">
-        <div className="mb-6 text-center">
-          <h2 className="text-2xl font-bold mb-2 text-gray-900">
-            {examTitle}座位表
-          </h2>
-          <div className="flex items-center justify-center gap-4 text-gray-600">
-            <span className="flex items-center">
-              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-              试室号: <span className="font-bold text-blue-600 ml-1">{String(roomNumber).padStart(2, '0')}</span>
-            </span>
-            <span className="text-gray-300">|</span>
-            <span className="flex items-center">
-              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-              共 <span className="font-bold text-green-600 ml-1">{students.length}</span> 人
-            </span>
+        <div className="mb-6">
+          <div className="bg-linear-to-r from-blue-600 to-indigo-600 rounded-lg p-5 mb-4 shadow-lg">
+            <div className="flex flex-wrap items-center gap-6 text-white">
+              <div className="flex items-center gap-2">
+                <div className="bg-white rounded-lg p-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs opacity-80">年级</p>
+                  <p className="text-lg font-bold">{grade || '混合年级'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="bg-white rounded-lg p-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs opacity-80">试室号</p>
+                  <p className="text-lg font-bold">{String(roomNumber).padStart(2, '0')}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="bg-white rounded-lg p-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs opacity-80">人数</p>
+                  <p className="text-lg font-bold">{students.length} 人</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="overflow-x-auto rounded-lg border-2 border-gray-300">
           <table className="w-full border-collapse bg-white">
             <thead>
-              <tr className="bg-gradient-to-r from-gray-100 to-gray-50">
-                {[1, 2, 3, 4, 5, 6].map((groupNum) => (
+              <tr className="bg-linear-to-r from-gray-100 to-gray-50">
+                {Array.from({ length: actualCols }, (_, i) => i + 1).map((groupNum) => (
                   <th
                     key={groupNum}
                     colSpan={4}
@@ -367,7 +415,7 @@ export default function Home() {
                 ))}
               </tr>
               <tr className="bg-gray-50">
-                {[1, 2, 3, 4, 5, 6].map((groupNum) => (
+                {Array.from({ length: actualCols }, (_, i) => i + 1).map((groupNum) => (
                   <React.Fragment key={groupNum}>
                     <th className="border border-gray-300 bg-gray-100 px-3 py-2 text-center text-sm font-bold text-gray-700">
                       座号
@@ -386,7 +434,7 @@ export default function Home() {
               </tr>
             </thead>
             <tbody>
-              {[0, 1, 2, 3, 4, 5].map((rowIndex) => (
+              {Array.from({ length: maxRows }, (_, i) => i).map((rowIndex) => (
                 <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                   {groups.map((group, groupIndex) => {
                     const seat = group[rowIndex];
@@ -417,7 +465,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-50">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 标题区域 */}
         <div className="text-center mb-10">
@@ -438,23 +486,7 @@ export default function Home() {
             </svg>
             考试配置
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-2">
-                考号前缀
-              </label>
-              <input
-                type="text"
-                value={prefix}
-                onChange={(e) => setPrefix(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg 
-                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
-                  transition-all bg-white text-gray-900 placeholder:text-gray-400
-                  font-medium"
-                placeholder="07011"
-              />
-              <p className="mt-2 text-xs text-gray-600 font-medium">格式：07011 + 试室号(01) + 座号(01-36)</p>
-            </div>
+          <div className="space-y-6">
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-2">
                 考试标题
@@ -467,8 +499,109 @@ export default function Home() {
                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
                   transition-all bg-white text-gray-900 placeholder:text-gray-400
                   font-medium"
-                placeholder="2025年秋季七年级期末质量监测"
+                placeholder="2025年秋季期末质量监测"
               />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-3">
+                年级考号前缀配置
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {['七年级', '八年级', '九年级'].map((grade) => (
+                  <div key={grade}>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      {grade}
+                    </label>
+                    <input
+                      type="text"
+                      value={gradePrefixes[grade] || ''}
+                      onChange={(e) => {
+                        setGradePrefixes({
+                          ...gradePrefixes,
+                          [grade]: e.target.value,
+                        });
+                      }}
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg 
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                        transition-all bg-white text-gray-900 font-medium text-sm"
+                      placeholder={grade === '七年级' ? '07011' : grade === '八年级' ? '08011' : '09011'}
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-gray-600 font-medium">
+                📝 系统会根据学生年级自动使用对应前缀。格式：前缀 + 试室号(01) + 座号(01-36)
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  每教室标准人数
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="72"
+                  value={studentsPerRoom}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value, 10);
+                    if (!isNaN(value) && value > 0) {
+                      setStudentsPerRoom(value);
+                    }
+                  }}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg 
+                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                    transition-all bg-white text-gray-900 placeholder:text-gray-400
+                    font-medium"
+                />
+                <p className="mt-2 text-xs text-gray-600 font-medium">默认36人，可调整</p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  多余学生分配策略
+                </label>
+                <select
+                  value={distributionStrategy}
+                  onChange={(e) => setDistributionStrategy(e.target.value as 'last' | 'separate' | 'average')}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg 
+                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                    transition-all bg-white text-gray-900 font-medium"
+                >
+                  <option value="last">最后教室</option>
+                  <option value="separate">单独教室</option>
+                  <option value="average">平均分配</option>
+                </select>
+                <p className="mt-2 text-xs text-gray-600 font-medium">
+                  {distributionStrategy === 'last' && '分配到最后教室'}
+                  {distributionStrategy === 'separate' && '单独创建教室'}
+                  {distributionStrategy === 'average' && '平均分配'}
+                </p>
+              </div>
+              <div className="flex items-end">
+                <div className="text-sm text-gray-700 bg-blue-50 rounded-lg p-4 border border-blue-200 w-full">
+                  <p className="font-semibold text-gray-900 mb-2">年级统计</p>
+                  {students.length > 0 ? (
+                    <div className="space-y-1">
+                      {Object.entries(
+                        students.reduce((acc, s) => {
+                          const grade = s.grade || '未知';
+                          acc[grade] = (acc[grade] || 0) + 1;
+                          return acc;
+                        }, {} as Record<string, number>)
+                      ).map(([grade, count]) => (
+                        <p key={grade} className="text-xs flex justify-between">
+                          <span>{grade}:</span>
+                          <span className="font-bold text-blue-700">{count}人</span>
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500">暂无数据</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -530,9 +663,6 @@ export default function Home() {
                   {typeof errors.file.message === 'string' ? errors.file.message : '请选择文件'}
                 </p>
               )}
-              <p className="mt-2 text-xs text-gray-700 font-medium bg-gray-50 rounded-md p-2">
-                📋 文件格式要求：第4行为表头（序号、姓名、身份证号、就读学校、就读阶段、年级、班别），第5行开始为数据
-              </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
@@ -620,7 +750,7 @@ export default function Home() {
 
         {/* 学生数据统计 */}
         {students.length > 0 && (
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-md p-5 mb-6">
+          <div className="bg-linear-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-md p-5 mb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <div className="bg-green-500 rounded-full p-2 mr-3">
@@ -638,7 +768,19 @@ export default function Home() {
               <div className="text-right">
                 <p className="text-xs text-gray-500">可生成</p>
                 <p className="text-lg font-bold text-green-700">
-                  {Math.ceil(students.length / 36)} 个试室
+                  {(() => {
+                    const remainder = students.length % studentsPerRoom;
+                    const fullRooms = Math.floor(students.length / studentsPerRoom);
+                    if (remainder === 0) {
+                      return `${fullRooms} 个试室`;
+                    } else if (distributionStrategy === 'separate') {
+                      return `${fullRooms + 1} 个试室（最后1个${remainder}人）`;
+                    } else if (distributionStrategy === 'last') {
+                      return `${fullRooms} 个试室（最后1个${studentsPerRoom + remainder}人）`;
+                    } else {
+                      return `${fullRooms} 个试室（平均分配）`;
+                    }
+                  })()}
                 </p>
               </div>
             </div>
@@ -648,7 +790,7 @@ export default function Home() {
         {/* 座位表显示和导出 */}
         {seatingArrangements.length > 0 && (
           <div className="mb-6">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg p-6 mb-6">
+            <div className="bg-linear-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg p-6 mb-6">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center text-white">
                   <div className="bg-white bg-opacity-20 rounded-lg p-3 mr-4">
@@ -718,12 +860,48 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="space-y-6">
-              {seatingArrangements.map((arrangement) => (
-                <div key={arrangement.roomNumber}>
-                  {renderSeatingTable(arrangement)}
-                </div>
-              ))}
+            <div className="space-y-8">
+              {/* 按年级分组显示 */}
+              {['七年级', '八年级', '九年级'].map((grade) => {
+                const gradeArrangements = seatingArrangements.filter(
+                  (arr) => arr.grade === grade
+                );
+                if (gradeArrangements.length === 0) return null;
+                
+                return (
+                  <div key={grade} className="space-y-4">
+                    <div className="bg-linear-to-r from-indigo-500 to-purple-600 rounded-lg p-5 sticky top-0 z-10 shadow-lg">
+                      <div className="flex flex-wrap items-center justify-between text-white gap-4">
+                        <div className="flex items-center gap-4">
+                          <div className="bg-white rounded-lg p-3">
+                            <svg className="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold">{grade}</p>
+                            <p className="text-sm font-medium opacity-90">
+                              {gradeArrangements.length} 个试室 · {gradeArrangements.reduce((sum, arr) => sum + arr.students.length, 0)} 名学生
+                            </p>
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-lg px-5 py-3">
+                          <p className="text-xs font-semibold text-purple-600 mb-1">考号前缀</p>
+                          <p className="text-2xl font-bold font-mono text-purple-700">{gradePrefixes[grade] || '未设置'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-6">
+                      {gradeArrangements.map((arrangement) => (
+                        <div key={`${grade}-${arrangement.roomNumber}`}>
+                          {renderSeatingTable(arrangement)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -741,10 +919,6 @@ export default function Home() {
               <p className="text-gray-700 mb-4 font-medium">
                 请上传学生Excel文件开始生成座位表
               </p>
-              <div className="text-sm text-gray-700 space-y-2 font-medium">
-                <p className="bg-gray-50 rounded-md p-2">📋 文件格式：第4行为表头，第5行开始为数据</p>
-                <p className="bg-gray-50 rounded-md p-2">✅ 需包含：姓名、年级、班别列</p>
-              </div>
             </div>
           </div>
         )}
