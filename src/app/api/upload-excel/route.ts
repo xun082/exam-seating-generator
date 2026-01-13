@@ -62,14 +62,38 @@ export async function POST(request: NextRequest) {
       console.log(`总行数: ${jsonData.length}`);
       console.log("前5行数据:", jsonData.slice(0, 5));
 
-      // 跳过前3行（索引0, 1, 2），第4行（索引3）是表头
-      if (jsonData.length < 4) {
-        console.log("数据行数不足4行，跳过此工作表");
-        return;
+      // 自动检测表头位置
+      let headerRowIndex = -1;
+      let dataStartIndex = -1;
+      
+      // 查找包含"姓名"或"年级"或"班"的表头行
+      for (let i = 0; i < Math.min(10, jsonData.length); i++) {
+        const row = jsonData[i];
+        if (Array.isArray(row)) {
+          const rowStr = row.map(cell => String(cell || "").toLowerCase()).join("");
+          if (rowStr.includes("姓名") || (rowStr.includes("年级") && rowStr.includes("班"))) {
+            headerRowIndex = i;
+            dataStartIndex = i + 1;
+            break;
+          }
+        }
+      }
+      
+      // 如果没找到表头，使用默认值（兼容旧格式：第4行是表头）
+      if (headerRowIndex === -1) {
+        if (jsonData.length < 4) {
+          console.log("数据行数不足，跳过此工作表");
+          return;
+        }
+        headerRowIndex = 3; // 第4行
+        dataStartIndex = 4; // 第5行
       }
 
-      // 第4行（索引3）作为表头
-      const headerRow = jsonData[3];
+      console.log("=== 自动检测到的表头位置 ===");
+      console.log("表头行索引:", headerRowIndex, "(第", headerRowIndex + 1, "行)");
+      console.log("数据起始行:", dataStartIndex, "(第", dataStartIndex + 1, "行)");
+
+      const headerRow = jsonData[headerRowIndex];
       if (!headerRow || !Array.isArray(headerRow)) {
         console.log("表头行无效，跳过此工作表");
         return;
@@ -77,38 +101,54 @@ export async function POST(request: NextRequest) {
 
       const headers = headerRow.map((h) => String(h || "").trim());
 
-      console.log("=== 表头信息（第4行） ===");
+      console.log("=== 表头信息 ===");
       console.log("表头数组:", headers);
       headers.forEach((h, i) => {
         console.log(`列${i}: "${h}"`);
       });
 
-      // 固定索引：姓名在索引1，年级在索引5，班别在索引6
-      const nameIndex = 1;
-      const gradeIndex = 5;
-      const classIndex = 6;
+      // 自动查找列索引
+      let nameIndex = -1;
+      let gradeIndex = -1;
+      let classIndex = -1;
 
-      console.log("=== 使用的列索引（固定） ===");
-      console.log("姓名列索引:", nameIndex, `"${headers[nameIndex] || ""}"`);
-      console.log("年级列索引:", gradeIndex, `"${headers[gradeIndex] || ""}"`);
-      console.log("班别列索引:", classIndex, `"${headers[classIndex] || ""}"`);
+      headers.forEach((cell, index) => {
+        const cellLower = cell.toLowerCase();
+        if (cellLower === "姓名" || cellLower.includes("姓名")) {
+          nameIndex = index;
+        } else if (cellLower === "年级" || cellLower.includes("年级")) {
+          gradeIndex = index;
+        } else if (cellLower === "班" || cellLower === "班别" || cellLower === "班级" || cellLower.includes("班")) {
+          classIndex = index;
+        }
+      });
 
-      // 从第5行（索引4）开始解析数据
-      for (let i = 4; i < jsonData.length; i++) {
+      // 如果自动检测失败，使用固定索引（兼容旧格式）
+      const finalNameIndex = nameIndex !== -1 ? nameIndex : 1;
+      const finalGradeIndex = gradeIndex !== -1 ? gradeIndex : 5;
+      const finalClassIndex = classIndex !== -1 ? classIndex : 6;
+
+      console.log("=== 最终使用的列索引 ===");
+      console.log("姓名列索引:", finalNameIndex, `"${headers[finalNameIndex] || ""}"`);
+      console.log("年级列索引:", finalGradeIndex, `"${headers[finalGradeIndex] || ""}"`);
+      console.log("班别列索引:", finalClassIndex, `"${headers[finalClassIndex] || ""}"`);
+
+      // 从数据起始行开始解析
+      for (let i = dataStartIndex; i < jsonData.length; i++) {
         const row = jsonData[i];
         if (!row || !Array.isArray(row)) {
           continue;
         }
 
         // 确保索引在有效范围内
-        if (row.length <= Math.max(nameIndex, gradeIndex, classIndex)) {
+        if (row.length <= Math.max(finalNameIndex, finalGradeIndex, finalClassIndex)) {
           continue;
         }
 
         // 直接提取数据
-        const nameValue = row[nameIndex];
-        const gradeValue = row[gradeIndex];
-        const classValue = row[classIndex];
+        const nameValue = row[finalNameIndex];
+        const gradeValue = row[finalGradeIndex];
+        const classValue = row[finalClassIndex];
 
         const name = String(nameValue || "").trim();
         const grade = String(gradeValue || "").trim();

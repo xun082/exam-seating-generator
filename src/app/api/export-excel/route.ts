@@ -151,6 +151,111 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    // 按班级生成工作表
+    // 收集每个班级的学生信息
+    const classMaps = new Map<string, Array<{
+      序号: number;
+      姓名: string;
+      年级: string;
+      班别: string;
+      考号: string;
+      考场号: string;
+      座位号: string;
+    }>>();
+
+    seatingArrangements.forEach((room: SeatingArrangement) => {
+      room.students.forEach((student) => {
+        const classKey = `${student.grade || '未知年级'}-${student.className || '未知班级'}`;
+        
+        if (!classMaps.has(classKey)) {
+          classMaps.set(classKey, []);
+        }
+        
+        classMaps.get(classKey)!.push({
+          序号: classMaps.get(classKey)!.length + 1,
+          姓名: student.name,
+          年级: student.grade || '未知年级',
+          班别: student.className || '未知班级',
+          考号: student.examId,
+          考场号: String(room.roomNumber).padStart(2, '0'),
+          座位号: String(student.seatNumber).padStart(2, '0'),
+        });
+      });
+    });
+
+    // 按年级和班级排序
+    const sortedClasses = Array.from(classMaps.entries()).sort((a, b) => {
+      return a[0].localeCompare(b[0], 'zh-CN');
+    });
+
+    // 为每个班级创建工作表
+    sortedClasses.forEach(([classKey, students]) => {
+      const [grade, className] = classKey.split('-');
+      
+      // 按考场号和座位号排序
+      students.sort((a, b) => {
+        if (a.考场号 !== b.考场号) {
+          return a.考场号.localeCompare(b.考场号);
+        }
+        return a.座位号.localeCompare(b.座位号);
+      });
+
+      // 重新编号
+      students.forEach((student, index) => {
+        student.序号 = index + 1;
+      });
+
+      // 创建数据数组
+      const classData: (string | number)[][] = [];
+      
+      // 标题行
+      classData.push([`${grade}${className}考场安排表`]);
+      classData.push([]); // 空行
+      
+      // 表头
+      classData.push(["序号", "姓名", "年级", "班别", "考号", "考场号", "座位号"]);
+      
+      // 数据行
+      students.forEach((student) => {
+        classData.push([
+          student.序号,
+          student.姓名,
+          student.年级,
+          student.班别,
+          student.考号,
+          student.考场号,
+          student.座位号,
+        ]);
+      });
+
+      // 创建工作表
+      const classSheet = XLSX.utils.aoa_to_sheet(classData);
+      
+      // 设置列宽
+      classSheet["!cols"] = [
+        { wch: 8 },  // 序号
+        { wch: 12 }, // 姓名
+        { wch: 12 }, // 年级
+        { wch: 10 }, // 班别
+        { wch: 14 }, // 考号
+        { wch: 10 }, // 考场号
+        { wch: 10 }, // 座位号
+      ];
+
+      // 设置行高
+      classSheet["!rows"] = [
+        { hpt: 30 }, // 标题行高一些
+        { hpt: 10 }, // 空行
+        { hpt: 20 }, // 表头行
+      ];
+
+      // 工作表名称（Excel工作表名称有长度限制，需要简化）
+      const sheetName = `${className}`;
+      
+      // 添加到工作簿最前面（在试室表之前）
+      XLSX.utils.book_append_sheet(workbook, classSheet, sheetName);
+    });
+
     // 生成Excel文件
     const excelBuffer = XLSX.write(workbook, {
       type: "buffer",
