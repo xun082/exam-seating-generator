@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useState, useMemo, useEffect } from 'react';
-import React from 'react';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useState, useMemo, useEffect } from "react";
+import React from "react";
 
 interface Student {
   name: string;
@@ -31,27 +31,31 @@ interface SeatingArrangement {
 
 export default function Home() {
   const [students, setStudents] = useState<Student[]>([]);
-  const [seatingArrangements, setSeatingArrangements] = useState<SeatingArrangement[]>([]);
+  const [seatingArrangements, setSeatingArrangements] = useState<
+    SeatingArrangement[]
+  >([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>('');
-  const [examTitle, setExamTitle] = useState('2025年秋季期末质量监测');
+  const [error, setError] = useState<string>("");
+  const [examTitle, setExamTitle] = useState("2025年秋季期末质量监测");
   const [studentsPerRoom, setStudentsPerRoom] = useState(36);
-  const [distributionStrategy, setDistributionStrategy] = useState<'last' | 'separate' | 'average'>('last');
+  const [distributionStrategy, setDistributionStrategy] = useState<
+    "last" | "separate" | "average"
+  >("last");
   const [gradePrefixes, setGradePrefixes] = useState<Record<string, string>>({
-    '七年级': '07011',
-    '八年级': '08011',
-    '九年级': '09011',
+    七年级: "07011",
+    八年级: "08011",
+    九年级: "09011",
   });
 
   // 从localStorage加载数据
   useEffect(() => {
-    const savedStudents = localStorage.getItem('students');
-    const savedSeating = localStorage.getItem('seatingArrangements');
-    const savedTitle = localStorage.getItem('examTitle');
-    const savedStudentsPerRoom = localStorage.getItem('studentsPerRoom');
-    const savedStrategy = localStorage.getItem('distributionStrategy');
-    const savedGradePrefixes = localStorage.getItem('gradePrefixes');
-    
+    const savedStudents = localStorage.getItem("students");
+    const savedSeating = localStorage.getItem("seatingArrangements");
+    const savedTitle = localStorage.getItem("examTitle");
+    const savedStudentsPerRoom = localStorage.getItem("studentsPerRoom");
+    const savedStrategy = localStorage.getItem("distributionStrategy");
+    const savedGradePrefixes = localStorage.getItem("gradePrefixes");
+
     if (savedStudents) {
       setStudents(JSON.parse(savedStudents));
     }
@@ -64,7 +68,12 @@ export default function Home() {
     if (savedStudentsPerRoom) {
       setStudentsPerRoom(parseInt(savedStudentsPerRoom, 10));
     }
-    if (savedStrategy && (savedStrategy === 'last' || savedStrategy === 'separate' || savedStrategy === 'average')) {
+    if (
+      savedStrategy &&
+      (savedStrategy === "last" ||
+        savedStrategy === "separate" ||
+        savedStrategy === "average")
+    ) {
       setDistributionStrategy(savedStrategy);
     }
     if (savedGradePrefixes) {
@@ -75,20 +84,19 @@ export default function Home() {
   // 使用自定义验证，避免在服务端使用FileList
   const excelSchema = useMemo(() => {
     return z.object({
-      file: z.any().refine(
-        (files) => {
-          if (!files || typeof files === 'undefined') {
+      file: z
+        .any()
+        .refine((files) => {
+          if (!files || typeof files === "undefined") {
             return false;
           }
-          if (typeof files.length === 'number' && files.length > 0) {
+          if (typeof files.length === "number" && files.length > 0) {
             return true;
           }
           return false;
-        },
-        '请选择文件'
-      ).refine(
-        (files) => {
-          if (!files || typeof files === 'undefined' || files.length === 0) {
+        }, "请选择文件")
+        .refine((files) => {
+          if (!files || typeof files === "undefined" || files.length === 0) {
             return false;
           }
           const file = files[0];
@@ -96,19 +104,19 @@ export default function Home() {
             return false;
           }
           const validTypes = [
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.ms-excel',
-            'text/csv'
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-excel",
+            "text/csv",
           ];
-          const fileType = file.type || '';
-          const fileName = file.name || '';
-          return validTypes.includes(fileType) || 
-                 fileName.endsWith('.xlsx') || 
-                 fileName.endsWith('.xls') || 
-                 fileName.endsWith('.csv');
-        },
-        '请上传Excel文件 (.xlsx, .xls, .csv)'
-      ),
+          const fileType = file.type || "";
+          const fileName = file.name || "";
+          return (
+            validTypes.includes(fileType) ||
+            fileName.endsWith(".xlsx") ||
+            fileName.endsWith(".xls") ||
+            fileName.endsWith(".csv")
+          );
+        }, "请上传Excel文件 (.xlsx, .xls, .csv)"),
     });
   }, []);
 
@@ -124,80 +132,86 @@ export default function Home() {
     resolver: zodResolver(excelSchema),
   });
 
-  const fileInput = watch('file');
+  const fileInput = watch("file");
 
   // 上传并解析学生数据
   const handleFileRead = async (file: File) => {
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append("file", file);
 
-      const response = await fetch('/api/upload-excel', {
-        method: 'POST',
+      const response = await fetch("/api/upload-excel", {
+        method: "POST",
         body: formData,
       });
 
       const result = await response.json();
 
       // 打印API返回的完整数据结构
-      console.log('=== API返回的完整数据结构 ===');
-      console.log('result:', result);
-      console.log('result.success:', result.success);
-      console.log('result.students类型:', typeof result.students);
-      console.log('result.students是否为数组:', Array.isArray(result.students));
+      console.log("=== API返回的完整数据结构 ===");
+      console.log("result:", result);
+      console.log("result.success:", result.success);
+      console.log("result.students类型:", typeof result.students);
+      console.log("result.students是否为数组:", Array.isArray(result.students));
       if (result.students && Array.isArray(result.students)) {
-        console.log('学生数量:', result.students.length);
-        console.log('前3名学生数据结构:', result.students.slice(0, 3));
-        result.students.slice(0, 3).forEach((student: Student, index: number) => {
-          console.log(`学生${index + 1}:`, {
-            name: student.name,
-            grade: student.grade,
-            className: student.className,
-            '所有字段': Object.keys(student),
-            '完整对象': student
+        console.log("学生数量:", result.students.length);
+        console.log("前3名学生数据结构:", result.students.slice(0, 3));
+        result.students
+          .slice(0, 3)
+          .forEach((student: Student, index: number) => {
+            console.log(`学生${index + 1}:`, {
+              name: student.name,
+              grade: student.grade,
+              className: student.className,
+              所有字段: Object.keys(student),
+              完整对象: student,
+            });
           });
-        });
       }
       if (result.debug) {
-        console.log('=== 调试信息 ===');
-        console.log('表头:', result.debug.headers);
-        console.log('示例数据:', result.debug.sample);
+        console.log("=== 调试信息 ===");
+        console.log("表头:", result.debug.headers);
+        console.log("示例数据:", result.debug.sample);
       }
 
       if (!response.ok) {
-        throw new Error(result.error || '上传失败');
+        throw new Error(result.error || "上传失败");
       }
 
       if (result.success && result.students && Array.isArray(result.students)) {
         if (result.students.length === 0) {
-          throw new Error('Excel文件中没有找到学生数据，请检查文件格式');
+          throw new Error("Excel文件中没有找到学生数据，请检查文件格式");
         }
-        
+
         // 打印保存前的数据
-        console.log('=== 准备保存到state和localStorage ===');
-        console.log('学生数据:', result.students);
-        
+        console.log("=== 准备保存到state和localStorage ===");
+        console.log("学生数据:", result.students);
+
         setStudents(result.students);
-        localStorage.setItem('students', JSON.stringify(result.students));
-        
+        localStorage.setItem("students", JSON.stringify(result.students));
+
         // 打印保存后的验证
-        console.log('=== 保存后验证 ===');
-        const saved = localStorage.getItem('students');
-        console.log('localStorage中的数据:', saved ? JSON.parse(saved).slice(0, 3) : 'null');
-        
+        console.log("=== 保存后验证 ===");
+        const saved = localStorage.getItem("students");
+        console.log(
+          "localStorage中的数据:",
+          saved ? JSON.parse(saved).slice(0, 3) : "null"
+        );
+
         // 清空之前的座位表，因为学生数据已更新
         setSeatingArrangements([]);
-        localStorage.removeItem('seatingArrangements');
+        localStorage.removeItem("seatingArrangements");
       } else {
-        throw new Error('服务器返回数据格式错误');
+        throw new Error("服务器返回数据格式错误");
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '读取Excel文件失败';
+      const errorMessage =
+        err instanceof Error ? err.message : "读取Excel文件失败";
       setError(errorMessage);
-      console.error('读取Excel文件错误:', err);
+      console.error("读取Excel文件错误:", err);
       // 如果出错，不清空已有数据
     } finally {
       setLoading(false);
@@ -207,18 +221,18 @@ export default function Home() {
   // 生成座位表
   const generateSeating = async () => {
     if (students.length === 0) {
-      setError('请先上传学生数据');
+      setError("请先上传学生数据");
       return;
     }
 
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
-      const response = await fetch('/api/generate-seating', {
-        method: 'POST',
+      const response = await fetch("/api/generate-seating", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           students,
@@ -231,39 +245,44 @@ export default function Home() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || '生成座位表失败');
+        throw new Error(result.error || "生成座位表失败");
       }
 
       if (result.success && result.seatingArrangements) {
         // 打印座位表数据结构
-        console.log('=== 座位表数据结构 ===');
-        console.log('座位表数量:', result.seatingArrangements.length);
+        console.log("=== 座位表数据结构 ===");
+        console.log("座位表数量:", result.seatingArrangements.length);
         if (result.seatingArrangements.length > 0) {
           const firstRoom = result.seatingArrangements[0];
-          console.log('第一个试室数据结构:', {
+          console.log("第一个试室数据结构:", {
             roomNumber: firstRoom.roomNumber,
             studentsCount: firstRoom.students?.length,
-            '前3个学生': firstRoom.students?.slice(0, 3).map((s: SeatAssignment) => ({
-              seatNumber: s.seatNumber,
-              name: s.name,
-              className: s.className,
-              grade: s.grade,
-              examId: s.examId,
-              '所有字段': Object.keys(s)
-            }))
+            前3个学生: firstRoom.students
+              ?.slice(0, 3)
+              .map((s: SeatAssignment) => ({
+                seatNumber: s.seatNumber,
+                name: s.name,
+                className: s.className,
+                grade: s.grade,
+                examId: s.examId,
+                所有字段: Object.keys(s),
+              })),
           });
         }
-        
+
         setSeatingArrangements(result.seatingArrangements);
-        localStorage.setItem('seatingArrangements', JSON.stringify(result.seatingArrangements));
-        localStorage.setItem('examTitle', examTitle);
-        localStorage.setItem('studentsPerRoom', studentsPerRoom.toString());
-        localStorage.setItem('distributionStrategy', distributionStrategy);
-        localStorage.setItem('gradePrefixes', JSON.stringify(gradePrefixes));
+        localStorage.setItem(
+          "seatingArrangements",
+          JSON.stringify(result.seatingArrangements)
+        );
+        localStorage.setItem("examTitle", examTitle);
+        localStorage.setItem("studentsPerRoom", studentsPerRoom.toString());
+        localStorage.setItem("distributionStrategy", distributionStrategy);
+        localStorage.setItem("gradePrefixes", JSON.stringify(gradePrefixes));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '生成座位表失败');
-      console.error('生成座位表错误:', err);
+      setError(err instanceof Error ? err.message : "生成座位表失败");
+      console.error("生成座位表错误:", err);
     } finally {
       setLoading(false);
     }
@@ -272,18 +291,18 @@ export default function Home() {
   // 导出为Excel
   const exportToExcel = async () => {
     if (seatingArrangements.length === 0) {
-      setError('请先生成座位表');
+      setError("请先生成座位表");
       return;
     }
 
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
-      const response = await fetch('/api/export-excel', {
-        method: 'POST',
+      const response = await fetch("/api/export-excel", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           seatingArrangements,
@@ -293,40 +312,38 @@ export default function Home() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || '导出失败');
+        throw new Error(errorData.error || "导出失败");
       }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      const fileName = `${examTitle || '考试座位表'}.xlsx`;
+      const fileName = `${examTitle || "考试座位表"}.xlsx`;
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
-      // 显示成功提示
-      const successMsg = `Excel文件已成功导出：${fileName}`;
-      console.log(successMsg);
+
+      // 显示成功提示（可以后续添加toast通知）
+      console.log(`✅ Excel文件已成功导出：${fileName}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '导出Excel失败');
-      console.error('导出Excel错误:', err);
+      setError(err instanceof Error ? err.message : "导出Excel失败");
+      console.error("导出Excel错误:", err);
     } finally {
       setLoading(false);
     }
   };
 
-
   const onSubmit = async (data: ExcelFormData) => {
     if (!data.file || data.file.length === 0) {
-      setError('请选择文件');
+      setError("请选择文件");
       return;
     }
     const file = data.file[0];
     if (!file) {
-      setError('文件无效');
+      setError("文件无效");
       return;
     }
     await handleFileRead(file);
@@ -336,14 +353,16 @@ export default function Home() {
   // 渲染座位表（动态布局，6列）
   const renderSeatingTable = (arrangement: SeatingArrangement) => {
     const { roomNumber, students, grade } = arrangement;
-    
+
     // 计算实际列数（最多6列）
-    const maxCol = Math.max(...students.map(s => s.col), 6);
+    const maxCol = Math.max(...students.map((s) => s.col), 6);
     const actualCols = Math.min(maxCol, 6);
-    
+
     // 按列（组）组织数据
-    const groups: SeatAssignment[][] = Array(actualCols).fill(null).map(() => []);
-    students.forEach(seat => {
+    const groups: SeatAssignment[][] = Array(actualCols)
+      .fill(null)
+      .map(() => []);
+    students.forEach((seat) => {
       const colIndex = seat.col - 1;
       if (colIndex >= 0 && colIndex < actualCols) {
         groups[colIndex].push(seat);
@@ -351,12 +370,12 @@ export default function Home() {
     });
 
     // 按行排序
-    groups.forEach(group => {
+    groups.forEach((group) => {
       group.sort((a, b) => a.row - b.row);
     });
-    
+
     // 计算最大行数
-    const maxRows = Math.max(...groups.map(g => g.length), 0);
+    const maxRows = Math.max(...groups.map((g) => g.length), 0);
 
     return (
       <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-200">
@@ -365,30 +384,62 @@ export default function Home() {
             <div className="flex flex-wrap items-center gap-6 text-white">
               <div className="flex items-center gap-2">
                 <div className="bg-white rounded-lg p-2">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  <svg
+                    className="w-5 h-5 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                    />
                   </svg>
                 </div>
                 <div>
                   <p className="text-xs opacity-80">年级</p>
-                  <p className="text-lg font-bold">{grade || '混合年级'}</p>
+                  <p className="text-lg font-bold">{grade || "混合年级"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <div className="bg-white rounded-lg p-2">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  <svg
+                    className="w-5 h-5 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
                   </svg>
                 </div>
                 <div>
                   <p className="text-xs opacity-80">试室号</p>
-                  <p className="text-lg font-bold">{String(roomNumber).padStart(2, '0')}</p>
+                  <p className="text-lg font-bold">
+                    {String(roomNumber).padStart(2, "0")}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <div className="bg-white rounded-lg p-2">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  <svg
+                    className="w-5 h-5 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
                   </svg>
                 </div>
                 <div>
@@ -404,53 +455,62 @@ export default function Home() {
           <table className="w-full border-collapse bg-white">
             <thead>
               <tr className="bg-linear-to-r from-gray-100 to-gray-50">
-                {Array.from({ length: actualCols }, (_, i) => i + 1).map((groupNum) => (
-                  <th
-                    key={groupNum}
-                    colSpan={4}
-                    className="border-2 border-gray-400 bg-blue-50 px-3 py-3 text-center font-bold text-gray-800 text-base"
-                  >
-                    第{['一', '二', '三', '四', '五', '六'][groupNum - 1]}组
-                  </th>
-                ))}
+                {Array.from({ length: actualCols }, (_, i) => i + 1).map(
+                  (groupNum) => (
+                    <th
+                      key={groupNum}
+                      colSpan={4}
+                      className="border-2 border-gray-400 bg-blue-50 px-3 py-3 text-center font-bold text-gray-800 text-base"
+                    >
+                      第{["一", "二", "三", "四", "五", "六"][groupNum - 1]}组
+                    </th>
+                  )
+                )}
               </tr>
               <tr className="bg-gray-50">
-                {Array.from({ length: actualCols }, (_, i) => i + 1).map((groupNum) => (
-                  <React.Fragment key={groupNum}>
-                    <th className="border border-gray-300 bg-gray-100 px-3 py-2 text-center text-sm font-bold text-gray-700">
-                      座号
-                    </th>
-                    <th className="border border-gray-300 bg-gray-100 px-3 py-2 text-center text-sm font-bold text-gray-700">
-                      姓名
-                    </th>
-                    <th className="border border-gray-300 bg-gray-100 px-3 py-2 text-center text-sm font-bold text-gray-700">
-                      班级
-                    </th>
-                    <th className="border border-gray-300 bg-gray-100 px-3 py-2 text-center text-sm font-bold text-gray-700">
-                      考号
-                    </th>
-                  </React.Fragment>
-                ))}
+                {Array.from({ length: actualCols }, (_, i) => i + 1).map(
+                  (groupNum) => (
+                    <React.Fragment key={groupNum}>
+                      <th className="border border-gray-300 bg-gray-100 px-3 py-2 text-center text-sm font-bold text-gray-700">
+                        座号
+                      </th>
+                      <th className="border border-gray-300 bg-gray-100 px-3 py-2 text-center text-sm font-bold text-gray-700">
+                        姓名
+                      </th>
+                      <th className="border border-gray-300 bg-gray-100 px-3 py-2 text-center text-sm font-bold text-gray-700">
+                        班级
+                      </th>
+                      <th className="border border-gray-300 bg-gray-100 px-3 py-2 text-center text-sm font-bold text-gray-700">
+                        考号
+                      </th>
+                    </React.Fragment>
+                  )
+                )}
               </tr>
             </thead>
             <tbody>
               {Array.from({ length: maxRows }, (_, i) => i).map((rowIndex) => (
-                <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <tr
+                  key={rowIndex}
+                  className={rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                >
                   {groups.map((group, groupIndex) => {
                     const seat = group[rowIndex];
                     return (
                       <React.Fragment key={`${groupIndex}-${rowIndex}`}>
                         <td className="border border-gray-300 px-3 py-3 text-center text-sm text-gray-800 font-medium">
-                          {seat ? String(seat.seatNumber).padStart(2, '0') : ''}
+                          {seat ? String(seat.seatNumber).padStart(2, "0") : ""}
                         </td>
                         <td className="border border-gray-300 px-3 py-3 text-center text-sm text-gray-900 font-semibold">
-                          {seat ? seat.name : ''}
+                          {seat ? seat.name : ""}
                         </td>
                         <td className="border border-gray-300 px-3 py-3 text-center text-sm text-blue-700 font-medium">
-                          {seat ? String(seat.className || seat.grade || '') : ''}
+                          {seat
+                            ? String(seat.className || seat.grade || "")
+                            : ""}
                         </td>
                         <td className="border border-gray-300 px-3 py-3 text-center text-sm text-gray-700 font-mono">
-                          {seat ? seat.examId : ''}
+                          {seat ? seat.examId : ""}
                         </td>
                       </React.Fragment>
                     );
@@ -468,28 +528,67 @@ export default function Home() {
     <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 标题区域 */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center mb-4">
+            <div className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-2xl p-4 shadow-xl">
+              <svg
+                className="w-12 h-12 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+            </div>
+          </div>
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-3">
             考试座位表生成系统
           </h1>
-          <p className="text-gray-600 text-lg">
-            快速生成标准化的考试座位安排表
+          <p className="text-gray-600 text-lg max-w-2xl mx-auto leading-relaxed">
+            智能生成标准化的考试座位安排表，支持按年级、班级自动分配，确保公平公正
           </p>
         </div>
 
         {/* 配置区域 */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            考试配置
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-800 flex items-center">
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg p-2 mr-3">
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+              </div>
+              考试配置
+            </h2>
+          </div>
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-2">
-                考试标题
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 mb-2">
+                <span>考试标题</span>
+                <span className="text-xs font-normal text-gray-500">
+                  (用于导出文件名)
+                </span>
               </label>
               <input
                 type="text"
@@ -498,41 +597,67 @@ export default function Home() {
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg 
                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
                   transition-all bg-white text-gray-900 placeholder:text-gray-400
-                  font-medium"
+                  font-medium hover:border-gray-400"
                 placeholder="2025年秋季期末质量监测"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-semibold text-gray-800 mb-3">
                 年级考号前缀配置
               </label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {['七年级', '八年级', '九年级'].map((grade) => (
-                  <div key={grade}>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      {grade}
-                    </label>
-                    <input
-                      type="text"
-                      value={gradePrefixes[grade] || ''}
-                      onChange={(e) => {
-                        setGradePrefixes({
-                          ...gradePrefixes,
-                          [grade]: e.target.value,
-                        });
-                      }}
-                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg 
-                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
-                        transition-all bg-white text-gray-900 font-medium text-sm"
-                      placeholder={grade === '七年级' ? '07011' : grade === '八年级' ? '08011' : '09011'}
-                    />
-                  </div>
-                ))}
+                {["七年级", "八年级", "九年级"].map((grade) => {
+                  const gradeColors: Record<string, string> = {
+                    七年级: "from-blue-500 to-blue-600",
+                    八年级: "from-green-500 to-green-600",
+                    九年级: "from-purple-500 to-purple-600",
+                  };
+                  return (
+                    <div key={grade} className="relative">
+                      <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 mb-2">
+                        <span
+                          className={`inline-block w-2 h-2 rounded-full bg-gradient-to-r ${
+                            gradeColors[grade] || "from-gray-500 to-gray-600"
+                          }`}
+                        ></span>
+                        {grade}
+                      </label>
+                      <input
+                        type="text"
+                        value={gradePrefixes[grade] || ""}
+                        onChange={(e) => {
+                          setGradePrefixes({
+                            ...gradePrefixes,
+                            [grade]: e.target.value,
+                          });
+                        }}
+                        className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg 
+                          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
+                          transition-all bg-white text-gray-900 font-medium text-sm font-mono
+                          hover:border-gray-400"
+                        placeholder={
+                          grade === "七年级"
+                            ? "07011"
+                            : grade === "八年级"
+                            ? "08011"
+                            : "09011"
+                        }
+                      />
+                    </div>
+                  );
+                })}
               </div>
-              <p className="mt-2 text-xs text-gray-600 font-medium">
-                📝 系统会根据学生年级自动使用对应前缀。格式：前缀 + 试室号(01) + 座号(01-36)
-              </p>
+              <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs text-gray-700 leading-relaxed">
+                  <span className="font-semibold text-blue-700">💡 提示：</span>
+                  系统会根据学生年级自动使用对应前缀。考号格式：
+                  <span className="font-mono font-semibold text-blue-600">
+                    {" "}
+                    前缀 + 试室号(01) + 座号(01-36)
+                  </span>
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -556,7 +681,9 @@ export default function Home() {
                     transition-all bg-white text-gray-900 placeholder:text-gray-400
                     font-medium"
                 />
-                <p className="mt-2 text-xs text-gray-600 font-medium">默认36人，可调整</p>
+                <p className="mt-2 text-xs text-gray-600 font-medium">
+                  默认36人，可调整（1-72人）
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-2">
@@ -564,7 +691,11 @@ export default function Home() {
                 </label>
                 <select
                   value={distributionStrategy}
-                  onChange={(e) => setDistributionStrategy(e.target.value as 'last' | 'separate' | 'average')}
+                  onChange={(e) =>
+                    setDistributionStrategy(
+                      e.target.value as "last" | "separate" | "average"
+                    )
+                  }
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg 
                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
                     transition-all bg-white text-gray-900 font-medium"
@@ -574,31 +705,95 @@ export default function Home() {
                   <option value="average">平均分配</option>
                 </select>
                 <p className="mt-2 text-xs text-gray-600 font-medium">
-                  {distributionStrategy === 'last' && '分配到最后教室'}
-                  {distributionStrategy === 'separate' && '单独创建教室'}
-                  {distributionStrategy === 'average' && '平均分配'}
+                  {distributionStrategy === "last" &&
+                    "多余学生分配到最后一个教室"}
+                  {distributionStrategy === "separate" &&
+                    "多余学生单独创建一个新教室"}
+                  {distributionStrategy === "average" &&
+                    "多余学生平均分配到所有教室"}
                 </p>
               </div>
               <div className="flex items-end">
-                <div className="text-sm text-gray-700 bg-blue-50 rounded-lg p-4 border border-blue-200 w-full">
-                  <p className="font-semibold text-gray-900 mb-2">年级统计</p>
+                <div className="text-sm text-gray-700 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-blue-200 shadow-sm w-full">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="bg-blue-500 rounded-lg p-1.5">
+                      <svg
+                        className="w-4 h-4 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                        />
+                      </svg>
+                    </div>
+                    <p className="font-bold text-gray-900 text-base">
+                      年级统计
+                    </p>
+                  </div>
                   {students.length > 0 ? (
-                    <div className="space-y-1">
+                    <div className="space-y-2.5">
                       {Object.entries(
                         students.reduce((acc, s) => {
-                          const grade = s.grade || '未知';
+                          const grade = s.grade || "未知";
                           acc[grade] = (acc[grade] || 0) + 1;
                           return acc;
                         }, {} as Record<string, number>)
-                      ).map(([grade, count]) => (
-                        <p key={grade} className="text-xs flex justify-between">
-                          <span>{grade}:</span>
-                          <span className="font-bold text-blue-700">{count}人</span>
-                        </p>
-                      ))}
+                      )
+                        .sort(([a], [b]) => {
+                          const order = ["七年级", "八年级", "九年级"];
+                          return (
+                            (order.indexOf(a) === -1 ? 999 : order.indexOf(a)) -
+                            (order.indexOf(b) === -1 ? 999 : order.indexOf(b))
+                          );
+                        })
+                        .map(([grade, count]) => (
+                          <div
+                            key={grade}
+                            className="flex items-center justify-between bg-white rounded-md px-3 py-2 shadow-sm border border-blue-100"
+                          >
+                            <span className="text-sm font-medium text-gray-700">
+                              {grade}
+                            </span>
+                            <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md">
+                              {count}人
+                            </span>
+                          </div>
+                        ))}
+                      <div className="pt-2 mt-2 border-t border-blue-200">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-gray-600">
+                            总计
+                          </span>
+                          <span className="text-sm font-bold text-blue-700">
+                            {students.length}人
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   ) : (
-                    <p className="text-xs text-gray-500">暂无数据</p>
+                    <div className="text-center py-4">
+                      <svg
+                        className="w-12 h-12 text-gray-300 mx-auto mb-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                      <p className="text-xs text-gray-400 font-medium">
+                        上传数据后显示统计
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -608,59 +803,149 @@ export default function Home() {
 
         {/* 文件上传表单 */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            数据上传
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-800 flex items-center">
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg p-2 mr-3">
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+              </div>
+              数据上传
+            </h2>
+          </div>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label 
-                htmlFor="file" 
+              <label
+                htmlFor="file"
                 className="block text-sm font-semibold text-gray-700 mb-3"
               >
                 上传学生Excel文件
               </label>
               <div className="relative">
+                {/* 隐藏原生文件输入 */}
                 <input
                   id="file"
                   type="file"
                   accept=".xlsx,.xls,.csv"
-                  {...register('file', {
+                  {...register("file", {
                     onChange: () => {
-                      setError('');
-                    }
+                      setError("");
+                    },
                   })}
-                  className="block w-full text-sm text-gray-700
-                    file:mr-4 file:py-3 file:px-6
-                    file:rounded-lg file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-blue-600 file:text-white
-                    hover:file:bg-blue-700
-                    file:transition-colors
-                    file:cursor-pointer
-                    file:shadow-md
-                    cursor-pointer
-                    border-2 border-dashed border-gray-400 rounded-lg p-4
-                    hover:border-blue-500 transition-colors bg-gray-50"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
-              </div>
-              {fileInput && fileInput.length > 0 && (
-                <div className="mt-3 flex items-center text-sm text-gray-900 bg-blue-50 rounded-lg p-3 border border-blue-200">
-                  <svg className="w-5 h-5 text-blue-700 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <span className="font-semibold text-gray-900">已选择:</span>
-                  <span className="ml-2 font-medium text-gray-800">{fileInput[0].name}</span>
+                {/* 自定义上传区域 */}
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-10 bg-gradient-to-br from-gray-50 to-blue-50/30 hover:border-blue-400 hover:from-blue-50 hover:to-indigo-50/30 transition-all cursor-pointer group">
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full p-5 mb-5 shadow-lg group-hover:scale-110 transition-transform">
+                      <svg
+                        className="w-10 h-10 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                        />
+                      </svg>
+                    </div>
+                    {fileInput && fileInput.length > 0 ? (
+                      <div className="w-full space-y-2">
+                        <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-semibold">
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                          已选择文件
+                        </div>
+                        <p className="text-base font-semibold text-gray-900 break-all bg-white rounded-lg px-4 py-3 shadow-sm border border-gray-200">
+                          {fileInput[0].name}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-3">
+                          点击区域重新选择文件
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-lg font-bold text-gray-800 mb-1">
+                          点击选择文件或拖拽文件到此处
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          支持{" "}
+                          <span className="font-semibold text-blue-600">
+                            .xlsx
+                          </span>
+                          、
+                          <span className="font-semibold text-blue-600">
+                            .xls
+                          </span>
+                          、
+                          <span className="font-semibold text-blue-600">
+                            .csv
+                          </span>{" "}
+                          格式
+                        </p>
+                        <div className="mt-4 flex items-center justify-center gap-4 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                            需包含：姓名、年级、班级
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+              </div>
               {errors.file && (
                 <p className="mt-2 text-sm text-red-600 flex items-center">
-                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  <svg
+                    className="w-4 h-4 mr-1"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
                   </svg>
-                  {typeof errors.file.message === 'string' ? errors.file.message : '请选择文件'}
+                  {typeof errors.file.message === "string"
+                    ? errors.file.message
+                    : "请选择文件"}
                 </p>
               )}
             </div>
@@ -668,24 +953,50 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4">
               <button
                 type="submit"
-                disabled={loading}
-                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg
-                  hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed
-                  transition-all font-semibold shadow-md hover:shadow-lg
+                disabled={loading || !fileInput || fileInput.length === 0}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3.5 px-6 rounded-lg
+                  hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed
+                  transition-all font-semibold shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:hover:scale-100
                   flex items-center justify-center"
               >
                 {loading ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     上传中...
                   </>
                 ) : (
                   <>
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    <svg
+                      className="w-5 h-5 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                      />
                     </svg>
                     上传学生数据
                   </>
@@ -696,23 +1007,49 @@ export default function Home() {
                   type="button"
                   onClick={generateSeating}
                   disabled={loading}
-                  className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg
-                    hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed
-                    transition-all font-semibold shadow-md hover:shadow-lg
+                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3.5 px-6 rounded-lg
+                    hover:from-green-700 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed
+                    transition-all font-semibold shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:hover:scale-100
                     flex items-center justify-center"
                 >
                   {loading ? (
                     <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg
+                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                       生成中...
                     </>
                   ) : (
                     <>
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      <svg
+                        className="w-5 h-5 mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                        />
                       </svg>
                       生成座位表 ({students.length}人)
                     </>
@@ -728,20 +1065,39 @@ export default function Home() {
           <div className="bg-red-50 border-2 border-red-300 text-red-800 px-6 py-4 rounded-lg mb-6 shadow-sm">
             <div className="flex items-start">
               <div className="shrink-0">
-                <svg className="h-5 w-5 text-red-600" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                <svg
+                  className="h-5 w-5 text-red-600"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </div>
               <div className="ml-3 flex-1">
-                <h3 className="text-sm font-semibold text-red-800 mb-1">上传失败</h3>
+                <h3 className="text-sm font-semibold text-red-800 mb-1">
+                  操作失败
+                </h3>
                 <p className="text-sm text-red-700">{error}</p>
               </div>
               <button
-                onClick={() => setError('')}
-                className="ml-4 shrink-0 text-red-600 hover:text-red-800"
+                onClick={() => setError("")}
+                className="ml-4 shrink-0 text-red-600 hover:text-red-800 transition-colors"
+                aria-label="关闭错误提示"
               >
-                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                <svg
+                  className="h-5 w-5"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </button>
             </div>
@@ -750,35 +1106,49 @@ export default function Home() {
 
         {/* 学生数据统计 */}
         {students.length > 0 && (
-          <div className="bg-linear-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-md p-5 mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="bg-green-500 rounded-full p-2 mr-3">
-                  <svg className="h-6 w-6 text-white" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          <div className="bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 border-2 border-green-300 rounded-xl shadow-lg p-6 mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-3 shadow-lg">
+                  <svg
+                    className="h-7 w-7 text-white"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">数据加载成功</p>
-                  <p className="text-lg font-bold text-green-700">
+                  <p className="text-sm font-medium text-gray-600 mb-1">
+                    数据加载成功
+                  </p>
+                  <p className="text-2xl font-bold text-green-700">
                     {students.length} 名学生数据已就绪
                   </p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-500">可生成</p>
-                <p className="text-lg font-bold text-green-700">
+              <div className="bg-white rounded-lg px-5 py-3 border border-green-200 shadow-sm">
+                <p className="text-xs text-gray-500 mb-1 font-medium">
+                  预计生成
+                </p>
+                <p className="text-xl font-bold text-green-700">
                   {(() => {
                     const remainder = students.length % studentsPerRoom;
-                    const fullRooms = Math.floor(students.length / studentsPerRoom);
+                    const fullRooms = Math.floor(
+                      students.length / studentsPerRoom
+                    );
                     if (remainder === 0) {
                       return `${fullRooms} 个试室`;
-                    } else if (distributionStrategy === 'separate') {
-                      return `${fullRooms + 1} 个试室（最后1个${remainder}人）`;
-                    } else if (distributionStrategy === 'last') {
-                      return `${fullRooms} 个试室（最后1个${studentsPerRoom + remainder}人）`;
+                    } else if (distributionStrategy === "separate") {
+                      return `${fullRooms + 1} 个试室`;
+                    } else if (distributionStrategy === "last") {
+                      return `${fullRooms} 个试室`;
                     } else {
-                      return `${fullRooms} 个试室（平均分配）`;
+                      return `${fullRooms + 1} 个试室`;
                     }
                   })()}
                 </p>
@@ -794,13 +1164,25 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center text-white">
                   <div className="bg-white bg-opacity-20 rounded-lg p-3 mr-4">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
                     </svg>
                   </div>
                   <div>
                     <p className="text-sm opacity-90">座位表已生成</p>
-                    <p className="text-xl font-bold">共 {seatingArrangements.length} 个试室</p>
+                    <p className="text-xl font-bold">
+                      共 {seatingArrangements.length} 个试室
+                    </p>
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -815,16 +1197,42 @@ export default function Home() {
                   >
                     {loading ? (
                       <>
-                        <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <svg
+                          className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
                         </svg>
                         重新生成中...
                       </>
                     ) : (
                       <>
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        <svg
+                          className="w-5 h-5 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                          />
                         </svg>
                         重新生成
                       </>
@@ -841,16 +1249,42 @@ export default function Home() {
                   >
                     {loading ? (
                       <>
-                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <svg
+                          className="animate-spin h-5 w-5"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
                         </svg>
                         导出中...
                       </>
                     ) : (
                       <>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
                         </svg>
                         导出Excel文档
                       </>
@@ -862,36 +1296,55 @@ export default function Home() {
 
             <div className="space-y-8">
               {/* 按年级分组显示 */}
-              {['七年级', '八年级', '九年级'].map((grade) => {
+              {["七年级", "八年级", "九年级"].map((grade) => {
                 const gradeArrangements = seatingArrangements.filter(
                   (arr) => arr.grade === grade
                 );
                 if (gradeArrangements.length === 0) return null;
-                
+
                 return (
                   <div key={grade} className="space-y-4">
                     <div className="bg-linear-to-r from-indigo-500 to-purple-600 rounded-lg p-5 sticky top-0 z-10 shadow-lg">
                       <div className="flex flex-wrap items-center justify-between text-white gap-4">
                         <div className="flex items-center gap-4">
                           <div className="bg-white rounded-lg p-3">
-                            <svg className="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            <svg
+                              className="w-7 h-7 text-purple-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                              />
                             </svg>
                           </div>
                           <div>
                             <p className="text-2xl font-bold">{grade}</p>
                             <p className="text-sm font-medium opacity-90">
-                              {gradeArrangements.length} 个试室 · {gradeArrangements.reduce((sum, arr) => sum + arr.students.length, 0)} 名学生
+                              {gradeArrangements.length} 个试室 ·{" "}
+                              {gradeArrangements.reduce(
+                                (sum, arr) => sum + arr.students.length,
+                                0
+                              )}{" "}
+                              名学生
                             </p>
                           </div>
                         </div>
                         <div className="bg-white rounded-lg px-5 py-3">
-                          <p className="text-xs font-semibold text-purple-600 mb-1">考号前缀</p>
-                          <p className="text-2xl font-bold font-mono text-purple-700">{gradePrefixes[grade] || '未设置'}</p>
+                          <p className="text-xs font-semibold text-purple-600 mb-1">
+                            考号前缀
+                          </p>
+                          <p className="text-2xl font-bold font-mono text-purple-700">
+                            {gradePrefixes[grade] || "未设置"}
+                          </p>
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-6">
                       {gradeArrangements.map((arrangement) => (
                         <div key={`${grade}-${arrangement.roomNumber}`}>
@@ -907,21 +1360,40 @@ export default function Home() {
         )}
 
         {/* 空状态提示 */}
-        {!loading && students.length === 0 && seatingArrangements.length === 0 && !error && (
-          <div className="bg-white rounded-xl shadow-lg p-16 text-center border border-gray-200">
-            <div className="max-w-md mx-auto">
-              <div className="bg-blue-100 rounded-full p-6 w-24 h-24 mx-auto mb-6 flex items-center justify-center">
-                <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
+        {!loading &&
+          students.length === 0 &&
+          seatingArrangements.length === 0 &&
+          !error && (
+            <div className="bg-white rounded-xl shadow-lg p-16 text-center border border-gray-200">
+              <div className="max-w-md mx-auto">
+                <div className="bg-blue-100 rounded-full p-6 w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                  <svg
+                    className="w-12 h-12 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  开始使用
+                </h3>
+                <p className="text-gray-700 mb-4 font-medium">
+                  请上传学生Excel文件开始生成座位表
+                </p>
+                <div className="mt-6 text-sm text-gray-600 space-y-1">
+                  <p>📋 Excel文件需包含：姓名、年级、班级三列</p>
+                  <p>✨ 系统支持 .xlsx、.xls、.csv 格式</p>
+                </div>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">开始使用</h3>
-              <p className="text-gray-700 mb-4 font-medium">
-                请上传学生Excel文件开始生成座位表
-              </p>
             </div>
-          </div>
-        )}
+          )}
       </div>
     </div>
   );
