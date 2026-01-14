@@ -214,7 +214,7 @@ function calculateRoomDistribution(
   return roomSizes;
 }
 
-// 按班级和最小人数要求分配学生到考场
+// 按班级和最小人数要求分配学生到考场（优化版）
 function distributeStudentsWithMinPerClass(
   students: Array<{ name: string; className: string; grade: string }>,
   grade: string,
@@ -244,11 +244,8 @@ function distributeStudentsWithMinPerClass(
   );
   const numRooms = roomSizes.length;
 
-  // 初始化每个考场的学生列表（按班级组织）
-  const roomStudentsByClass: Array<Map<string, Array<(typeof students)[0]>>> =
-    Array(numRooms)
-      .fill(null)
-      .map(() => new Map());
+  console.log(`\n=== 开始分配 ${grade} ===`);
+  console.log(`总学生数: ${totalStudents}, 考场数: ${numRooms}, 最小人数要求: ${minPerClassPerRoom}`);
 
   // 如果不需要最小人数要求，直接随机分配
   if (minPerClassPerRoom === 0) {
@@ -265,173 +262,130 @@ function distributeStudentsWithMinPerClass(
     return roomStudents;
   }
 
-  // 需要满足最小人数要求的情况
-  // 第一步：为每个班级分配学生到考场，确保每个考场至少有最小人数
+  // 第一步：计算每个班级应该分配到多少个考场
+  const classRoomAllocations = new Map<string, number>();
+  
+  for (const [className, classStudents] of studentsByClass.entries()) {
+    const classSize = classStudents.length;
+    // 该班级能分配到的最大考场数（确保每个考场至少有最小人数）
+    const maxRoomsForClass = Math.floor(classSize / minPerClassPerRoom);
+    // 实际分配的考场数（不能超过总考场数）
+    const allocatedRooms = Math.min(maxRoomsForClass, numRooms);
+    classRoomAllocations.set(className, allocatedRooms);
+    
+    console.log(`班级 ${className}: ${classSize}人, 可分配到 ${allocatedRooms} 个考场`);
+  }
+
+  // 第二步：为每个班级均匀分配学生到考场
+  const roomStudentsByClass: Array<Map<string, Array<(typeof students)[0]>>> =
+    Array(numRooms)
+      .fill(null)
+      .map(() => new Map());
+
   for (const [className, classStudents] of studentsByClass.entries()) {
     const shuffled = [...classStudents].sort(() => Math.random() - 0.5);
     const classSize = classStudents.length;
+    const allocatedRooms = classRoomAllocations.get(className) || 0;
 
-    // 计算该班级能分配到多少个考场（每个考场至少minPerClassPerRoom人）
-    const maxRoomsForClass = Math.floor(classSize / minPerClassPerRoom);
-    const actualRooms = Math.min(maxRoomsForClass, numRooms);
-
-    if (actualRooms === 0) {
-      // 如果班级人数不足以分配到任何考场，分配到第一个考场
+    if (allocatedRooms === 0) {
+      // 人数不足，分配到第一个考场
       if (!roomStudentsByClass[0].has(className)) {
         roomStudentsByClass[0].set(className, []);
       }
       roomStudentsByClass[0].get(className)!.push(...shuffled);
+      console.log(`班级 ${className} 人数不足，全部分配到考场1`);
     } else {
-      // 为每个考场分配最小人数
+      // 均匀分配：计算每个考场应该分配多少人
+      const basePerRoom = Math.floor(classSize / allocatedRooms);
+      const remainder = classSize % allocatedRooms;
+
       let studentIndex = 0;
-      for (let roomIndex = 0; roomIndex < actualRooms; roomIndex++) {
+      for (let roomIndex = 0; roomIndex < allocatedRooms; roomIndex++) {
+        // 前 remainder 个考场多分配1人
+        const studentsInThisRoom = basePerRoom + (roomIndex < remainder ? 1 : 0);
+        
         if (!roomStudentsByClass[roomIndex].has(className)) {
           roomStudentsByClass[roomIndex].set(className, []);
         }
-        const allocated = shuffled.slice(
-          studentIndex,
-          studentIndex + minPerClassPerRoom
-        );
+        
+        const allocated = shuffled.slice(studentIndex, studentIndex + studentsInThisRoom);
         roomStudentsByClass[roomIndex].get(className)!.push(...allocated);
-        studentIndex += minPerClassPerRoom;
-      }
-
-      // 如果还有剩余学生，分配到已有分配的考场中（轮询分配）
-      while (studentIndex < shuffled.length && actualRooms > 0) {
-        const roomIndex =
-          (studentIndex - actualRooms * minPerClassPerRoom) % actualRooms;
-        roomStudentsByClass[roomIndex]
-          .get(className)!
-          .push(shuffled[studentIndex]);
-        studentIndex++;
+        
+        console.log(`班级 ${className} -> 考场${roomIndex + 1}: ${studentsInThisRoom}人`);
+        
+        studentIndex += studentsInThisRoom;
       }
     }
   }
 
-  // 第二步：将每个考场的学生合并成数组，同时保持班级信息
+  // 第三步：合并每个考场的学生
   const roomStudents: Array<Array<(typeof students)[0]>> = Array(numRooms)
     .fill(null)
     .map(() => []);
 
-  // 保存每个考场中每个班级的学生数量（用于检查最小人数要求）
-  const classCountsByRoom: Array<Map<string, number>> = Array(numRooms)
-    .fill(null)
-    .map(() => new Map());
-
   for (let roomIndex = 0; roomIndex < numRooms; roomIndex++) {
-    for (const [className, classStudents] of roomStudentsByClass[
-      roomIndex
-    ].entries()) {
-      roomStudents[roomIndex].push(...classStudents);
-      classCountsByRoom[roomIndex].set(className, classStudents.length);
+    const classStudentsInRoom: Array<(typeof students)[0]> = [];
+    
+    for (const [className, classStudents] of roomStudentsByClass[roomIndex].entries()) {
+      classStudentsInRoom.push(...classStudents);
     }
+    
     // 打乱该考场内的学生顺序
-    roomStudents[roomIndex].sort(() => Math.random() - 0.5);
+    roomStudents[roomIndex] = classStudentsInRoom.sort(() => Math.random() - 0.5);
+    
+    console.log(`考场${roomIndex + 1} 总人数: ${roomStudents[roomIndex].length} (目标: ${roomSizes[roomIndex]})`);
   }
 
-  // 第三步：调整每个考场的人数，使其符合roomSizes要求
-  // 在移动学生时，确保不违反最小人数要求
-  for (let roomIndex = 0; roomIndex < numRooms; roomIndex++) {
-    const maxSize = roomSizes[roomIndex];
+  // 第四步：微调以达到目标人数（如果有差异）
+  // 这一步主要处理由于均匀分配导致的细微差异
+  for (let roomIndex = 0; roomIndex < numRooms - 1; roomIndex++) {
     const currentSize = roomStudents[roomIndex].length;
+    const targetSize = roomSizes[roomIndex];
+    const diff = currentSize - targetSize;
 
-    if (currentSize > maxSize) {
-      // 超过容量，需要移走多余学生
-      const excess = currentSize - maxSize;
+    if (diff > 0) {
+      // 当前考场人数过多，移动到下一个考场
+      // 优先移动那些在当前考场人数较多的班级的学生
+      const classCountsInRoom = new Map<string, number>();
+      roomStudents[roomIndex].forEach(student => {
+        const className = String(student.className || "");
+        classCountsInRoom.set(className, (classCountsInRoom.get(className) || 0) + 1);
+      });
+
       const studentsToMove: Array<(typeof students)[0]> = [];
-
-      // 从后往前取学生，但要确保不破坏最小人数要求
-      for (
-        let i = roomStudents[roomIndex].length - 1;
-        i >= 0 && studentsToMove.length < excess;
-        i--
-      ) {
+      
+      for (let i = roomStudents[roomIndex].length - 1; i >= 0 && studentsToMove.length < diff; i--) {
         const student = roomStudents[roomIndex][i];
         const className = String(student.className || "");
-        const currentCount = classCountsByRoom[roomIndex].get(className) || 0;
+        const currentCount = classCountsInRoom.get(className) || 0;
 
-        // 如果移走这个学生后，该班级在该考场的人数仍然 >= minPerClassPerRoom，则可以移走
+        // 只有在移走后仍然满足最小人数要求时才移走
         if (currentCount > minPerClassPerRoom) {
           studentsToMove.unshift(student);
           roomStudents[roomIndex].splice(i, 1);
-          classCountsByRoom[roomIndex].set(className, currentCount - 1);
+          classCountsInRoom.set(className, currentCount - 1);
         }
       }
 
-      // 将多余学生移到下一个考场
-      if (studentsToMove.length > 0 && roomIndex < numRooms - 1) {
-        roomStudents[roomIndex + 1].unshift(...studentsToMove);
-        // 更新下一个考场的班级计数
-        studentsToMove.forEach((student) => {
-          const className = String(student.className || "");
-          const currentCount =
-            classCountsByRoom[roomIndex + 1].get(className) || 0;
-          classCountsByRoom[roomIndex + 1].set(className, currentCount + 1);
-        });
+      if (studentsToMove.length > 0) {
+        roomStudents[roomIndex + 1].push(...studentsToMove);
+        console.log(`从考场${roomIndex + 1}移动${studentsToMove.length}人到考场${roomIndex + 2}`);
       }
     }
   }
 
-  // 第四步：如果某些考场人数不足，从后续考场补充
-  // 但需要确保不违反最小人数要求
-  for (let roomIndex = 0; roomIndex < numRooms; roomIndex++) {
-    const currentSize = roomStudents[roomIndex].length;
-    const targetSize = roomSizes[roomIndex];
-
-    if (currentSize < targetSize) {
-      const needed = targetSize - currentSize;
-
-      // 从后续考场中寻找可以移动的学生
-      for (
-        let nextRoomIndex = roomIndex + 1;
-        nextRoomIndex < numRooms;
-        nextRoomIndex++
-      ) {
-        if (needed <= 0) break;
-
-        const nextRoomStudents = roomStudents[nextRoomIndex];
-        const nextRoomTargetSize = roomSizes[nextRoomIndex];
-        const nextRoomCurrentSize = nextRoomStudents.length;
-
-        // 计算可以移动的学生数量（不能超过目标容量，且不能破坏最小人数要求）
-        const canMove = Math.min(
-          needed,
-          Math.max(0, nextRoomCurrentSize - nextRoomTargetSize)
-        );
-
-        // 进一步检查：确保移走学生后，每个班级仍然满足最小人数要求
-        const studentsToMove: Array<(typeof students)[0]> = [];
-        for (
-          let i = nextRoomStudents.length - 1;
-          i >= 0 && studentsToMove.length < canMove;
-          i--
-        ) {
-          const student = nextRoomStudents[i];
-          const className = String(student.className || "");
-          const currentCount =
-            classCountsByRoom[nextRoomIndex].get(className) || 0;
-
-          // 如果移走这个学生后，该班级在该考场的人数仍然 >= minPerClassPerRoom，则可以移走
-          if (currentCount > minPerClassPerRoom) {
-            studentsToMove.unshift(student);
-            nextRoomStudents.splice(i, 1);
-            classCountsByRoom[nextRoomIndex].set(className, currentCount - 1);
-          }
-        }
-
-        if (studentsToMove.length > 0) {
-          roomStudents[roomIndex].push(...studentsToMove);
-          // 更新当前考场的班级计数
-          studentsToMove.forEach((student) => {
-            const className = String(student.className || "");
-            const currentCount =
-              classCountsByRoom[roomIndex].get(className) || 0;
-            classCountsByRoom[roomIndex].set(className, currentCount + 1);
-          });
-        }
-      }
-    }
-  }
+  console.log(`\n=== ${grade} 最终分配结果 ===`);
+  roomStudents.forEach((students, index) => {
+    const classBreakdown = new Map<string, number>();
+    students.forEach(student => {
+      const className = String(student.className || "");
+      classBreakdown.set(className, (classBreakdown.get(className) || 0) + 1);
+    });
+    const breakdown = Array.from(classBreakdown.entries())
+      .map(([cls, count]) => `${cls}:${count}人`)
+      .join(", ");
+    console.log(`考场${index + 1}: ${students.length}人 [${breakdown}]`);
+  });
 
   return roomStudents;
 }
