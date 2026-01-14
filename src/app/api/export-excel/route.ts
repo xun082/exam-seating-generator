@@ -249,8 +249,9 @@ export async function POST(request: NextRequest) {
         { hpt: 20 }, // 表头行
       ];
 
-      // 工作表名称（Excel工作表名称有长度限制，需要简化）
-      const sheetName = `${className}`;
+      // 工作表名称（包含年级信息，避免重复）
+      const gradeShort = grade.replace('年级', ''); // 七年级 -> 七
+      const sheetName = `${gradeShort}-${className}`;
       
       // 添加到工作簿最前面（在试室表之前）
       XLSX.utils.book_append_sheet(workbook, classSheet, sheetName);
